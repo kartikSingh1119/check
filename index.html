@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Live Editor with Auto Load</title>
+
+  <!-- CodeMirror CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/theme/dracula.min.css">
+
+  <!-- CodeMirror JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/mode/htmlmixed/htmlmixed.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f1720;
+      color: #e6eef8;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card { width: 400px; }
+    h3 { margin: 0 0 8px 0; }
+    #editor { height: 200px; border-radius: 6px; overflow: hidden; border: 1px solid #2b3038; }
+    iframe {
+      width: 100%;
+      height: 300px;
+      margin-top: 10px;
+      border: 1px solid #2b3038;
+      background: white;
+      border-radius: 6px;
+    }
+    input[type="file"] {
+      margin-bottom: 10px;
+      width: 100%;
+      padding: 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h3>Live Editor (Auto Loads x.html)</h3>
+    <input type="file" id="fileInput" accept=".html"/>
+    <div id="editor"></div>
+    <iframe id="output" title="Preview"></iframe>
+  </div>
+
+  <script>
+    const editor = CodeMirror(document.getElementById('editor'), {
+      mode: 'htmlmixed',
+      lineNumbers: true,
+      theme: 'dracula',
+      tabSize: 2,
+      value: ''
+    });
+
+    const fileInput = document.getElementById('fileInput');
+    const output = document.getElementById('output');
+
+    // Load local file
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          editor.setValue(e.target.result);
+          output.srcdoc = e.target.result;
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    // Live preview while typing
+    editor.on('change', () => {
+      output.srcdoc = editor.getValue();
+    });
+
+    // Automatically load x.html on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      fetch("x.html")  // or full URL if in another repo
+        .then(response => response.text())
+        .then(data => {
+          editor.setValue(data);
+          output.srcdoc = data;
+        })
+        .catch(err => console.error("Error loading file:", err));
+    });
+  </script>
+</body>
+</html>
