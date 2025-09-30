@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Multiplayer Box</title>
+    <style>
+        .box {
+            width: 360px;
+            height: 360px;
+            border: 1px solid black;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player {
+            width: 20px;
+            height: 20px;
+            border: 1px solid black;
+            position: absolute;
+            bottom: 0;
+        }
+
+        .enemy {
+            width: 20px;
+            height: 20px;
+            border: 1px solid black;
+            position: absolute;
+            background-color: red;
+            text-align:center;
+            line-height:20px;
+        }
+
+        .bullet {
+            width: 10px;
+            height: 10px;
+            border: 1px solid black;
+            position: absolute;
+            background-color: black;
+            border-radius: 50%;
+        }
+        .buttonBox{
+            width:360px;
+            height:120px;
+            position:absolute;
+            border:1px solid black;
+        }
+        .up{
+            width:60px;
+            height:50px;
+             position:absolute;
+        }
+        .upp{
+           
+            left:148px;
+        }
+        .lft{
+            left:80px;
+            top:32.5px;
+        }
+        .rght{
+            top:32.5px;
+            left:215px;
+        }
+        .dwn{
+            left:148px;
+            bottom:0px;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="player"></div>
+    </div>
+    <div class="buttonBox">
+        <button class="up upp">up</button>
+        <button class="up lft">left</button>
+        <button class="up rght">right</button>
+        <button class="up dwn">down</button>
+    </div>
+
+    <script>
+        const box = document.querySelector('.box');
+        const player = document.querySelector('.player');
+        const ws = new WebSocket("ws://localhost:8080"); // change IP
+        let playerValue=10;
+        player.innerHTML=playerValue;
+        function movePlayer(x, y) {
+            const px = Math.max(0, Math.min(box.clientWidth - player.offsetWidth, x));
+            const py = Math.max(0, Math.min(box.clientHeight - player.offsetHeight, y));
+            player.style.left = px + 'px';
+            player.style.top = py + 'px';
+            ws.send(JSON.stringify({ type: "move", x: px, y: py }));
+        }
+
+        // mouse move
+        box.onmousemove = (event) => {
+            const x = event.clientX - box.offsetLeft - player.offsetWidth / 2;
+            const y = event.clientY - box.offsetTop - player.offsetHeight / 2;
+            movePlayer(x, y);
+        };
+
+        // touch move
+        box.ontouchmove = (event) => {
+            event.preventDefault();
+            const touch = event.touches[0];
+            const x = touch.clientX - box.offsetLeft - player.offsetWidth / 2;
+            const y = touch.clientY - box.offsetTop - player.offsetHeight / 2;
+            movePlayer(x, y);
+        };
+        let enemyValue=10;
+
+        ws.onopen = () => {
+            let enemy = document.createElement("div");
+            enemy.className = "enemy";
+            enemy.innerHTML=enemyValue;
+            box.appendChild(enemy);
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "move") {
+                let enemy = document.querySelector('.enemy');
+                if (enemy) {
+                    enemy.style.left = data.x + "px";
+                    enemy.style.top = data.y + "px";
+                }
+            }
+            else if (data.type === "shoot") {
+               
+                shootEnemyBullet(data.x, data.y);
+            }
+        };
+//when player fire....
+        function shoot() {
+            let playerRect = player.getBoundingClientRect();
+            let boxRect = box.getBoundingClientRect();
+            let bullet = document.createElement("div");
+            bullet.className = "bullet";
+            let startX = playerRect.left - boxRect.left + player.offsetWidth / 2 - 5;
+            let startY = playerRect.top - boxRect.top;
+            bullet.style.left = startX + "px";
+            bullet.style.top = startY + "px";
+            box.appendChild(bullet);
+
+            let bulletX = startX;
+            let bulletY = startY;
+            let speed = 5;
+
+            let interval = setInterval(() => {
+                let enemy = document.querySelector('.enemy');
+                if (!enemy) return;
+                let enemyRect = enemy.getBoundingClientRect();
+                let boxRect = box.getBoundingClientRect();
+                let enemyX = enemyRect.left - boxRect.left;
+                let enemyY = enemyRect.top - boxRect.top;
+                let dx = enemyX - bulletX;
+                let dy = enemyY - bulletY;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                let ux = dx / dist;
+                let uy = dy / dist;
+                bulletX += ux * speed;
+                bulletY += uy * speed;
+                bullet.style.left = bulletX + "px";
+                bullet.style.top = bulletY + "px";
+                if (dist < 5) {
+                    enemyValue-=1;
+                    let enemy=document.querySelector(".enemy");
+                    enemy.innerHTML=enemyValue;
+                    if(enemyValue==0){
+                        enemyValue=10;
+                        enemy.innerHTML=enemyValue;
+                        bullet.remove();
+                    clearInterval(interval);
+                    }
+                   bullet.remove();
+                    clearInterval(interval);
+                }
+            }, 20);
+        }
+//when enemy fire....
+        function shootEnemyBullet(startX, startY) {
+            let bullet = document.createElement("div");
+            bullet.className = "bullet";
+            bullet.style.left = startX + "px";
+            bullet.style.top = startY + "px";
+            box.appendChild(bullet);
+
+            let bulletX = startX;
+            let bulletY = startY;
+            let speed = 5;
+
+            let interval = setInterval(() => {
+                let playerRect = player.getBoundingClientRect();
+                let boxRect = box.getBoundingClientRect();
+                let playerX = playerRect.left - boxRect.left;
+                let playerY = playerRect.top - boxRect.top;
+                let dx = playerX - bulletX;
+                let dy = playerY - bulletY;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                let ux = dx / dist;
+                let uy = dy / dist;
+                bulletX += ux * speed;
+                bulletY += uy * speed;
+                bullet.style.left = bulletX + "px";
+                bullet.style.top = bulletY + "px";
+                if (dist < 5) {
+                    playerValue-=1;
+                    player.innerHTML=playerValue;
+                    if(playerValue==0){
+                        playerValue=10;
+                        player.innerHTML=playerValue;
+                        bullet.remove();
+                        clearInterval(interval);
+                    }
+                    bullet.remove();
+                    clearInterval(interval);
+                }
+            }, 20);
+        }
+
+        player.onclick = () => {
+            shoot();
+            let x = parseInt(player.style.left) || 0;
+            let y = parseInt(player.style.top) || 0;
+            ws.send(JSON.stringify({ type: "shoot", x, y }));
+        };
+
+        player.ontouchend = () => {
+            shoot();
+            let x = parseInt(player.style.left) || 0;
+            let y = parseInt(player.style.top) || 0;
+            ws.send(JSON.stringify({ type: "shoot", x, y }));
+        };
+    </script>
+</body>
+</html>
